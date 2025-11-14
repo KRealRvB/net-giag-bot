@@ -23,6 +23,7 @@ STATE_TICKETS = 'tickets'
 
 # MAIN LOGIC 
 
+# MAIN MENU
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     bot.reply_to(message, "Привет! Я бот для диагностики сетевого оборудования!")
@@ -37,11 +38,25 @@ def send_welcome(message):
     bot.send_message(user_id, "Выберите действие: ", reply_markup=markup)
 
 
+# MAIN MANU HANDLER
+@bot.message_handler(func=lambda msg: user_states.get(msg.from_user.id) == STATE_MAIN_MENU)
+def main_menu_handler(message):
+    user_id = message.from_user.id
+    text = message.text
 
+    if text == "Диагностика":
+        user_states[user_id] = STATE_DIAGNOSTICS
+        bot.send_message(user_id, "Введите ip-адрес устройства, например 192.168.0.1")
 
+        
+    elif text == "Заявки":
+        tickets = ["Заявка 1", "Заявка 2", "Заявка 3"]
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+        for t in tickets:
+            markup.add(t)
+        markup.add("Назад")
+        bot.send_message(user_id, "Выберите заявку: ", reply_markup=markup)
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    bot.send_message(message.chat.id, f"Ты написал: {message.text}")
-
+    else:
+        bot.send_message(user_id, "Пожалуйста, воспользуйтесь кнопками")
 bot.polling()
