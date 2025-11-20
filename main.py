@@ -3,11 +3,11 @@ import os
 import logging
 import telebot
 from telebot import types
-from utils.netbox_utils.netbox import get_tag_netbox, get_role_netbox
-from utils.mikrotik_utils.mikrotik import get_info_mikrotik
+from utils.netbox_utils.netbox import get_tag_netbox
+# from utils.mikrotik_utils.mikrotik import get_info_mikrotik
 from utils.huawei_utils.huawei import get_info_huawei
-from utils.dlink_utils.dlink import get_info_dlink
-from utils.snr_utils.snr import get_info_snr
+# from utils.dlink_utils.dlink import get_info_dlink
+# from utils.snr_utils.snr import get_info_snr
 
 
 logging.basicConfig(
@@ -66,7 +66,11 @@ def main_menu_handler(message):
 def diagnostics_handler(message):
     user_id = message.from_user.id
     text = message.text
-    if get_tag_netbox(text.strip()) == 'mikrotik' or get_role_netbox(text.strip()) == 'loopback':
+    logging.info(get_tag_netbox(text.strip()))
+    if text == "Назад":
+        back_to_main_menu(bot, user_id)
+        return
+    if get_tag_netbox(text.strip()) == 'mikrotik':
         userid_states[user_id] = STATE_MIK_DIAG
     elif get_tag_netbox(text.strip()) == 'dlink':
         userid_states[user_id] = STATE_DLINK_DIAG
@@ -74,6 +78,9 @@ def diagnostics_handler(message):
         userid_states[user_id] = STATE_HUAWEI_DIAG
     elif get_tag_netbox(text.strip()) == 'snr':
         userid_states[user_id] = STATE_SNR_DIAG
+    else:
+        bot.send_message(user_id, "Введите корректный IP-адрес")
+        return
 
     userid_host[user_id] = text.strip()
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -81,95 +88,141 @@ def diagnostics_handler(message):
     markup.add("Системная информация")
     markup.add("VLAN на интерфейсах")
     markup.add("Назад")
-    bot.send_message(user_id, "Выберете действие: ", reply_markup=markup)
-    if text == "Назад":
-        return main_menu(message)
-    else:
-        pass # если это не IP-адрес, то переспрашиваем
-        bot.send_message(user_id, "Пожалуйста, введите корректный IP-адрес, либо кнопку 'Назад'")
-
+    bot.send_message(user_id, "Выберите действие: ", reply_markup=markup)
+    
 
 @bot.message_handler(func=lambda msg: userid_states.get(msg.from_user.id) == STATE_MIK_DIAG)
 def diagnostics_mik_handler(message):
     user_id = message.from_user.id
     text = message.text
-    bot.send_message(user_id, "Получаю... Ждите")
+    if text == "Назад":
+        back_to_main_menu(bot, user_id)
+        return
+    bot.send_message(user_id, "Проверяю... Ждите")
     if text == "Статусы физических интерфейсов":
         logging.info(userid_host.get(user_id))
         host = userid_host.get(user_id)
         bot.send_message(user_id, get_info_mikrotik("int-info", host))
-    if text == "VLAN на интерфейсах":
+    elif text == "VLAN на интерфейсах":
         logging.info(userid_host.get(user_id))
         bot.send_message(user_id, get_info_mikrotik("vlan-info", host))
-    if text == "Системная информация":
+    elif text == "Системная информация":
         logging.info(userid_host.get(user_id))
         bot.send_message(user_id, get_info_mikrotik("system-info", host))
-    elif text == "Назад":
-        return main_menu(message)
     else:
         bot.send_message(user_id, "Пожалуйста, воспользуйтесь кнопками")
 
 
 @bot.message_handler(func=lambda msg: userid_states.get(msg.from_user.id) == STATE_DLINK_DIAG)
-def diagnostics_mik_handler(message):
+def diagnostics_dlink_handler(message):
     user_id = message.from_user.id
     text = message.text
-    bot.send_message(user_id, "Получаю... Ждите")
+    if text == "Назад":
+        back_to_main_menu(bot, user_id)
+        return
+    
+    bot.send_message(user_id, "Проверяю... Ждите")
     if text == "Статусы физических интерфейсов":
         logging.info(userid_host.get(user_id))
         host = userid_host.get(user_id)
         bot.send_message(user_id, get_info_dlink("int-info", host))
-    if text == "VLAN на интерфейсах":
+    elif text == "VLAN на интерфейсах":
         logging.info(userid_host.get(user_id))
         bot.send_message(user_id, get_info_dlink("vlan-info", host))
-    if text == "Системная информация":
+    elif text == "Системная информация":
         logging.info(userid_host.get(user_id))
         bot.send_message(user_id, get_info_dlink("system-info", host))
-    elif text == "Назад":
-        return main_menu(message)
     else:
         bot.send_message(user_id, "Пожалуйста, воспользуйтесь кнопками")
 
 
 @bot.message_handler(func=lambda msg: userid_states.get(msg.from_user.id) == STATE_HUAWEI_DIAG)
-def diagnostics_mik_handler(message):
+def diagnostics_huawei_handler(message):
     user_id = message.from_user.id
     text = message.text
-    bot.send_message(user_id, "Получаю... Ждите")
+    if text == "Назад":
+        back_to_main_menu(bot, user_id)
+        return
+    
+    bot.send_message(user_id, "Проверяю... Ждите")
+    host = userid_host.get(user_id)
     if text == "Статусы физических интерфейсов":
         logging.info(userid_host.get(user_id))
-        host = userid_host.get(user_id)
-        bot.send_message(user_id, get_info_huawei("int-info", host))
-    if text == "VLAN на интерфейсах":
+        answer = get_info_huawei("int-info", host)
+        if answer == None:
+            bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+            logging.error(f"Ошибка подключения к {host} в ConnectHandler huawei.py")
+            back_to_main_menu(bot, user_id)
+            return
+        else:
+            bot.send_message(user_id, answer)
+    elif text == "VLAN на интерфейсах":
         logging.info(userid_host.get(user_id))
-        bot.send_message(user_id, get_info_huawei("vlan-info", host))
-    if text == "Системная информация":
+        answer = get_info_huawei("vlan-info", host)
+        if answer == None:
+            bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+            logging.error(f"Ошибка подключения к {host} в ConnectHandler huawei.py")
+            back_to_main_menu(bot, user_id)
+            return
+        else:
+            bot.send_message(user_id, answer)
+    elif text == "Системная информация":
         logging.info(userid_host.get(user_id))
-        bot.send_message(user_id, get_info_huawei("system-info", host))
-    elif text == "Назад":
-        return main_menu(message)
+        answer = get_info_huawei("system-info", host)
+        if answer == None:
+            bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+            logging.error(f"Ошибка подключения к {host} в ConnectHandler huawei.py")
+            back_to_main_menu(bot, user_id)
+            return
+        else:
+            bot.send_message(user_id, answer)
     else:
         bot.send_message(user_id, "Пожалуйста, воспользуйтесь кнопками")
 
 
 @bot.message_handler(func=lambda msg: userid_states.get(msg.from_user.id) == STATE_SNR_DIAG)
-def diagnostics_mik_handler(message):
+def diagnostics_snr_handler(message):
     user_id = message.from_user.id
     text = message.text
-    bot.send_message(user_id, "Получаю... Ждите")
+    if text == "Назад":
+        back_to_main_menu(bot, user_id)
+        return
+    elif text == "":
+        pass
+    bot.send_message(user_id, "Проверяю... Ждите")
     if text == "Статусы физических интерфейсов":
         logging.info(userid_host.get(user_id))
         host = userid_host.get(user_id)
         bot.send_message(user_id, get_info_snr("int-info", host))
-    if text == "VLAN на интерфейсах":
+    elif text == "VLAN на интерфейсах":
         logging.info(userid_host.get(user_id))
         bot.send_message(user_id, get_info_snr("vlan-info", host))
-    if text == "Системная информация":
+    elif text == "Системная информация":
         logging.info(userid_host.get(user_id))
         bot.send_message(user_id, get_info_snr("system-info", host))
-    elif text == "Назад":
-        return main_menu(message)
     else:
         bot.send_message(user_id, "Пожалуйста, воспользуйтесь кнопками")
+
+
+def back_to_main_menu(bot, user_id):
+    userid_states[user_id] = STATE_MAIN_MENU
+    bot.send_message(user_id, "Возврат в главное меню")
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn = types.KeyboardButton("Диагностика")
+    markup.add(btn)
+    bot.send_message(user_id, "Выберите действие: ", reply_markup=markup)
+
+
+@bot.message_handler(func=lambda msg: True)
+def fallback_handler(message):
+    user_id = message.from_user.id
+    logging.info(f"Неизвестное состояние пользователя {user_id}. Возврат в главное меню.")
+    userid_states[user_id] = STATE_MAIN_MENU
+    userid_host.pop(user_id, None)
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn = types.KeyboardButton("Диагностика")
+    markup.add(btn)
+    bot.send_message(user_id, "Был перезапуск бота. Вы возвращены в главное меню", reply_markup=markup)
 
 bot.polling()

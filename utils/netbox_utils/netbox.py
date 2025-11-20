@@ -28,5 +28,5 @@ def get_tag_netbox(requested_ip):
     ips = list(nb.ipam.ip_addresses.all())
     for ip in ips:
         if requested_ip == ip.address[:-3]:
-            return(ip.tags[0])
+            return(ip.tags[0]['slug'])
     
