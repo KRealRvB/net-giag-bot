@@ -3,6 +3,7 @@ import os
 import logging
 import telebot
 from telebot import types
+from netmiko.exceptions import NetmikoTimeoutException, AuthenticationException, ReadTimeout
 from utils.netbox_utils.netbox import get_tag_netbox
 # from utils.mikrotik_utils.mikrotik import get_info_mikrotik
 from utils.huawei_utils.huawei import get_info_huawei
@@ -144,40 +145,52 @@ def diagnostics_huawei_handler(message):
         back_to_main_menu(bot, user_id)
         return
     
+
     bot.send_message(user_id, "Проверяю... Ждите")
     host = userid_host.get(user_id)
-    if text == "Статусы физических интерфейсов":
-        logging.info(userid_host.get(user_id))
-        answer = get_info_huawei("int-info", host)
-        if answer == None:
-            bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
-            logging.error(f"Ошибка подключения к {host} в ConnectHandler huawei.py")
-            back_to_main_menu(bot, user_id)
-            return
-        else:
+    logging.info(f"{user_id}: {host}")
+    try:
+        if text == "Статусы физических интерфейсов":
+            answer = get_info_huawei("int-info", host)  
             bot.send_message(user_id, answer)
-    elif text == "VLAN на интерфейсах":
-        logging.info(userid_host.get(user_id))
-        answer = get_info_huawei("vlan-info", host)
-        if answer == None:
-            bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
-            logging.error(f"Ошибка подключения к {host} в ConnectHandler huawei.py")
-            back_to_main_menu(bot, user_id)
-            return
-        else:
+        elif text == "VLAN на интерфейсах":
+            answer = get_info_huawei("vlan-info", host)
             bot.send_message(user_id, answer)
-    elif text == "Системная информация":
-        logging.info(userid_host.get(user_id))
-        answer = get_info_huawei("system-info", host)
-        if answer == None:
-            bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
-            logging.error(f"Ошибка подключения к {host} в ConnectHandler huawei.py")
-            back_to_main_menu(bot, user_id)
-            return
-        else:
+        elif text == "Системная информация":
+            answer = get_info_huawei("system-info", host)
             bot.send_message(user_id, answer)
-    else:
-        bot.send_message(user_id, "Пожалуйста, воспользуйтесь кнопками")
+        else:
+            bot.send_message(user_id, "Пожалуйста, воспользуйтесь кнопками")
+    except ConnectionError as e:
+        logging.error(f"{e} [{host}]")
+        bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+        back_to_main_menu(bot, user_id)
+        return
+    except NetmikoTimeoutException as e:
+        logging.error(f"{e} [{host}]")
+        bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+        back_to_main_menu(bot, user_id)
+        return
+    except ConnectionRefusedError as e:
+        logging.error(f"{e} [{host}]")
+        bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+        back_to_main_menu(bot, user_id)
+        return
+    except AuthenticationException as e:
+        logging.error(f"{e} [{host}]")
+        bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+        back_to_main_menu(bot, user_id)
+        return
+    except ReadTimeout as e:
+        logging.error(f"{e} [{host}]")
+        bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+        back_to_main_menu(bot, user_id)
+        return
+    except OSError as e:
+        logging.error(f"{e} [{host}]")
+        bot.send_message(user_id, "Ошибка подключения. Администратор уведомлен. Переход в главное меню")
+        back_to_main_menu(bot, user_id)
+        return
 
 
 @bot.message_handler(func=lambda msg: userid_states.get(msg.from_user.id) == STATE_SNR_DIAG)

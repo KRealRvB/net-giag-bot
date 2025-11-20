@@ -3,7 +3,7 @@ from ntc_templates.parse import parse_output
 from dotenv import load_dotenv
 import os
 import logging
-from netmiko.exceptions import NetmikoTimeoutException, AuthenticationException, ReadTimeout
+
 
 load_dotenv()
 
@@ -25,31 +25,14 @@ def get_info_huawei(action, host):
         "password": password,
         "port": 23,
     }
-    try:
-        with ConnectHandler(**device) as conn:
-            conn.send_command("screen-length 0 temporary")
-            if action == "int-info":
-                return get_if_data_huawei(conn)
-            elif action == "vlan-info":
-                return get_vlan_data_huawei(conn)
-            elif action == "system-info":
-                return get_system_data_huawei(conn)
-    except ConnectionError as e:
-        logging.error(e)
-        return None
-    except NetmikoTimeoutException as e:
-        logging.error(e)
-        return None
-    except ConnectionRefusedError as e:
-        logging.error(e)
-        return None
-    except AuthenticationException as e:
-        logging.error(e)
-        return None
-    except ReadTimeout as e:
-        logging.error(e)
-        return None
-
+    with ConnectHandler(**device) as conn:
+        conn.send_command("screen-length 0 temporary")
+        if action == "int-info":
+            return get_if_data_huawei(conn)
+        elif action == "vlan-info":
+            return get_vlan_data_huawei(conn)
+        elif action == "system-info":
+            return get_system_data_huawei(conn)
 
         
 
